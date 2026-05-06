@@ -15,13 +15,29 @@
 
 ## 安装
 
-把这个仓库放到 Claude Code 的 skills 目录：
+### 方式 1：一键安装（推荐）
+
+通过 [skills.sh](https://skills.sh/) CLI 一行命令搞定：
+
+```bash
+npx skills add Jayden72Huang/damc-skill
+```
+
+加 `-g` 安装到全局，加 `-y` 跳过确认：
+
+```bash
+npx skills add Jayden72Huang/damc-skill -g -y
+```
+
+### 方式 2：git clone
 
 ```bash
 git clone https://github.com/Jayden72Huang/damc-skill.git ~/.claude/skills/damc
 ```
 
-或者手动下载，放到 `~/.claude/skills/damc/`，确保目录结构是：
+### 方式 3：手动下载
+
+把整个仓库下载到 `~/.claude/skills/damc/`，目录结构应为：
 
 ```
 ~/.claude/skills/damc/
