@@ -22,6 +22,37 @@ description: |
 
 ## 执行流程
 
+### Phase 0: 隐私告知（必须，第一步）
+
+**触发后立刻显示，等用户确认后才能扫描：**
+
+```
+🔒 DAMC 隐私承诺（请阅读）
+
+我即将扫描你的本地环境来生成 Agent 体检报告，包括：
+  ~/.claude/ 配置 · git 历史 · 已安装开发工具
+
+数据流向（透明承诺）：
+  ✅ 所有原始内容仅在你本地处理，永远不上传
+  ✅ 仅评分数字（D/A/M/C 总分 + 22 个子维度）会上传到
+     damc.ai 用于生成你的可分享报告
+  ✅ 数据只用于生成你的报告，绝不用于训练 AI / 卖广告 /
+     分享给第三方
+  ✅ 任何时候 damc.ai/account/delete 一键清空所有数据
+
+❌ 永不上传：CLAUDE.md 全文、MEMORY.md 内容、git commit
+   原文、skill 名称列表、项目路径、邮箱
+
+→ 输入 "同意" 继续
+→ 输入 "本地模式" 仅生成本地报告（不上传，不能用平台功能）
+→ 输入 "取消" 退出
+```
+
+**用户回答后路由：**
+- "同意" / "yes" / "ok" → Phase 1 扫描 + Phase 5 上传 + 显示平台 URL
+- "本地模式" / "local" → Phase 1 扫描 + 跳过 Phase 5，仅生成 ~/Desktop/HTML
+- "取消" / "no" → 直接退出
+
 ### Phase 1: 自动扫描（核心 — 不依赖问卷）
 
 **扫描以下数据源，静默执行，不需要用户参与：**
@@ -90,12 +121,78 @@ git log --all --author 过滤
 
 **读取 `references/career-archetypes.md` 匹配用户的 8 种画像之一。**
 
-### Phase 4: 生成可视化报告
+### Phase 4: 生成可视化报告（本地 LITE 版）
 
 1. 读取 `templates/report.html` 模板
 2. 将评分数据填入模板中的 `window.DAMC_DATA` 对象
-3. 将完成的 HTML 文件保存到用户桌面：`~/Desktop/DAMC-Report-{YYYY-MM-DD}.html`
-4. 告知用户文件位置，提示可以直接在浏览器中打开并分享
+3. 将 LITE 版 HTML 保存到 `~/Desktop/DAMC-Report-{YYYY-MM-DD}.html`
+   - LITE 版只含 4 维总分和画像，不含子维度详情、可蒸馏清单、护城河识别、行动建议
+4. 完整版需在 damc.ai 平台解锁（见 Phase 5）
+
+### Phase 5: 上传分数 + 生成平台链接（仅同意上传时）
+
+**核心规则：只上传数字，永不上传原文。**
+
+```python
+# 仅以下数据会通过 HTTPS POST 到 damc.ai
+upload_payload = {
+    "scores": {
+        "D": 78,                          # 总分
+        "A": 62,
+        "M": 85,
+        "C": 65,
+        "subs": {                          # 22 个子维度数字
+            "expertise": 82, "methodology": 65, ...
+        }
+    },
+    "archetype": "AI架构师",                # 画像名
+    "role": "前端开发",                     # 用户输入
+    "mbti": "INTJ",                        # 可选
+    "env": {"os": "darwin", "shell": "zsh"}, # 桌面环境
+    "scan_summary": {                       # 仅数字摘要
+        "totalSkills": 83,
+        "customSkills": 5,
+        "mcpServers": 8,
+        "memoryFiles": 12,
+        "claudeMdLines": 150,
+        "aiCommits": 45,
+        "totalCommits": 200
+    }
+}
+# ❌ 不上传任何原始内容
+```
+
+接收 `{ token, url }` 响应后，在终端显示：
+
+```
+📊 你的 Agent 体检 · 部分结果
+
+  D ████████░░ 78  M █████████░ 85
+  A ██████░░░░ 62  C ██████░░░░ 65
+
+  画像：🏆 AI 架构师
+
+  ⚠️  Top 风险：你的 [跨域思维] 评分较低
+
+  🔓 解锁完整分析（22 子维度 + 可蒸馏清单 +
+     护城河识别 + 90 天行动路径）：
+
+  https://damc.ai/r/{token}
+
+  📄 本地 LITE 版已保存：~/Desktop/DAMC-Report-{date}.html
+```
+
+**API 端点（MVP 阶段使用 vibergo.space 域名）：**
+```
+POST https://vibergo.space/api/scan
+Content-Type: application/json
+Body: <upload_payload 见上>
+Response: { "token": "aB7xK9", "url": "https://vibergo.space/r/aB7xK9" }
+```
+
+如果 API 调用失败（网络/服务不可用），降级为本地模式：
+- 终端只显示 LITE 摘要
+- 告知用户：「平台暂不可达，已生成本地报告」
 
 **`window.DAMC_DATA` 结构：**
 
