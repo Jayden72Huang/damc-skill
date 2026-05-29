@@ -26,6 +26,12 @@ DAMC 支持扫描以下 AI Agent 环境（自动检测，无需配置）：
 | Aider | `~/.aider*` | config, model settings |
 | GitHub Copilot | `~/.config/github-copilot/` | settings, instructions |
 | WorkBuddy | `~/.workbuddy/` | config, skills |
+| Trae (ByteDance) | `~/.trae/` | rules, extensions, settings |
+| 通义灵码 (Lingma) | `~/.lingma/` | config, rules, extensions |
+| 豆包 MarsCode | `~/.marscode/` | config, rules, extensions |
+| CodeGeeX (智谱) | `~/.codegeex/` | config, chat history |
+| Baidu Comate | `~/.comate/` | config, extensions |
+| DevChat | `~/.chat/` | config, workflows |
 
 如果用户环境中安装了多个 Agent，则合并扫描，取最高分。
 
@@ -87,6 +93,12 @@ echo "=== DAMC Agent Detection ==="
 [ -f "$HOME/.aider.conf.yml" ] || [ -d "$HOME/.aider" ] && echo "DETECTED: Aider"
 [ -d "$HOME/.config/github-copilot" ] && echo "DETECTED: GitHub Copilot"
 [ -d "$HOME/.workbuddy" ] && echo "DETECTED: WorkBuddy"
+[ -d "$HOME/.trae" ] && echo "DETECTED: Trae"
+[ -d "$HOME/.lingma" ] && echo "DETECTED: 通义灵码"
+[ -d "$HOME/.marscode" ] && echo "DETECTED: MarsCode"
+[ -d "$HOME/.codegeex" ] && echo "DETECTED: CodeGeeX"
+[ -d "$HOME/.comate" ] && echo "DETECTED: Comate"
+[ -d "$HOME/.chat" ] && echo "DETECTED: DevChat"
 ```
 
 将检测结果记录下来，用于 Phase 3 多 Agent 合并评分。
@@ -214,7 +226,64 @@ aider --version
   → 目录结构、配置文件数量、skill/插件数量
 ```
 
-#### 1.9 Git 历史扫描（通用 — 与 Agent 无关）
+#### 1.9 Trae 环境扫描（如果检测到 `~/.trae/`）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.trae/
+  → 目录结构、配置文件
+
+~/.trae/rules/ 或项目级 .trae/rules/
+  → 自定义规则数量和复杂度
+
+~/.trae/extensions/
+  → 已安装扩展数量
+```
+
+#### 1.10 通义灵码环境扫描（如果检测到 `~/.lingma/`）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.lingma/
+  → 配置目录结构
+
+~/.lingma/config 或 settings
+  → 自定义配置深度（模型选择、代码补全偏好等）
+
+项目级 .lingma 配置
+  → 是否有项目级定制
+```
+
+#### 1.11 MarsCode 环境扫描（如果检测到 `~/.marscode/`）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.marscode/
+  → 配置目录结构
+
+项目级 .marscode/ 或自定义规则
+  → 是否有项目定制
+
+MarsCode IDE 扩展
+  → 已安装扩展数量和类型
+```
+
+#### 1.12 CodeGeeX / Comate / DevChat 环境扫描
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.codegeex/ / ~/.comate/ / ~/.chat/
+  → 目录存在 = 使用过该工具
+  → 配置文件复杂度
+  → 对话历史数量（如果有）
+  → 项目级配置存在
+```
+
+#### 1.13 Git 历史扫描（通用）
 
 ```
 git log --oneline -100

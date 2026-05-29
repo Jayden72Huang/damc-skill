@@ -15,7 +15,13 @@ for dir in \
   "$HOME/.codeium/windsurf/skills/damc" \
   "$HOME/.continue/skills/damc" \
   "$HOME/.aider/skills/damc" \
-  "$HOME/.workbuddy/skills/damc"; do
+  "$HOME/.workbuddy/skills/damc" \
+  "$HOME/.trae/skills/damc" \
+  "$HOME/.lingma/skills/damc" \
+  "$HOME/.marscode/skills/damc" \
+  "$HOME/.codegeex/skills/damc" \
+  "$HOME/.comate/skills/damc" \
+  "$HOME/.chat/skills/damc"; do
   if [ -d "$dir" ]; then
     rm -rf "$dir"
     echo "  [OK] 已移除: $dir"

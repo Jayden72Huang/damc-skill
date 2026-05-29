@@ -71,6 +71,42 @@ if [ -d "$HOME/.workbuddy" ]; then
   INSTALL_TARGETS="$INSTALL_TARGETS workbuddy"
 fi
 
+if [ -d "$HOME/.trae" ]; then
+  echo "  ✓ Trae         (~/.trae/)"
+  AGENTS_FOUND=$((AGENTS_FOUND + 1))
+  INSTALL_TARGETS="$INSTALL_TARGETS trae"
+fi
+
+if [ -d "$HOME/.lingma" ]; then
+  echo "  ✓ 通义灵码     (~/.lingma/)"
+  AGENTS_FOUND=$((AGENTS_FOUND + 1))
+  INSTALL_TARGETS="$INSTALL_TARGETS lingma"
+fi
+
+if [ -d "$HOME/.marscode" ]; then
+  echo "  ✓ MarsCode     (~/.marscode/)"
+  AGENTS_FOUND=$((AGENTS_FOUND + 1))
+  INSTALL_TARGETS="$INSTALL_TARGETS marscode"
+fi
+
+if [ -d "$HOME/.codegeex" ]; then
+  echo "  ✓ CodeGeeX     (~/.codegeex/)"
+  AGENTS_FOUND=$((AGENTS_FOUND + 1))
+  INSTALL_TARGETS="$INSTALL_TARGETS codegeex"
+fi
+
+if [ -d "$HOME/.comate" ]; then
+  echo "  ✓ Comate       (~/.comate/)"
+  AGENTS_FOUND=$((AGENTS_FOUND + 1))
+  INSTALL_TARGETS="$INSTALL_TARGETS comate"
+fi
+
+if [ -d "$HOME/.chat" ]; then
+  echo "  ✓ DevChat      (~/.chat/)"
+  AGENTS_FOUND=$((AGENTS_FOUND + 1))
+  INSTALL_TARGETS="$INSTALL_TARGETS devchat"
+fi
+
 echo ""
 
 if [ "$AGENTS_FOUND" -eq 0 ]; then
@@ -105,6 +141,12 @@ for agent in $INSTALL_TARGETS; do
     continue) mkdir -p "$HOME/.continue/skills";           install_skill "$HOME/.continue/skills/damc" "Continue" ;;
     aider)    mkdir -p "$HOME/.aider/skills";              install_skill "$HOME/.aider/skills/damc" "Aider" ;;
     workbuddy)mkdir -p "$HOME/.workbuddy/skills";          install_skill "$HOME/.workbuddy/skills/damc" "WorkBuddy" ;;
+    trae)     mkdir -p "$HOME/.trae/skills";               install_skill "$HOME/.trae/skills/damc" "Trae" ;;
+    lingma)   mkdir -p "$HOME/.lingma/skills";             install_skill "$HOME/.lingma/skills/damc" "通义灵码" ;;
+    marscode) mkdir -p "$HOME/.marscode/skills";           install_skill "$HOME/.marscode/skills/damc" "MarsCode" ;;
+    codegeex) mkdir -p "$HOME/.codegeex/skills";           install_skill "$HOME/.codegeex/skills/damc" "CodeGeeX" ;;
+    comate)   mkdir -p "$HOME/.comate/skills";             install_skill "$HOME/.comate/skills/damc" "Comate" ;;
+    devchat)  mkdir -p "$HOME/.chat/skills";               install_skill "$HOME/.chat/skills/damc" "DevChat" ;;
   esac
 done
 
