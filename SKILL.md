@@ -1,8 +1,9 @@
 ---
 name: damc
 description: |
-  AI时代个人价值评估器（DAMC模型）。自动扫描用户的 Claude Code 环境（.claude/ 目录、skills、hooks、memory、MCP 配置、git 历史等），
+  AI时代个人价值评估器（DAMC模型）。自动扫描用户的 AI Agent 环境（Claude Code、Codex、Cursor、Windsurf、Continue、Aider 等），
   量化评估四个维度：蒸馏价值(D)、抗蒸馏指数(A)、AI驾驭能力(M)、职业适配(C)，生成可分享的可视化 HTML 报告。
+  兼容所有能运行 Shell 命令的 AI Agent。
   触发条件：用户提到"评估我的价值"、"DAMC"、"distill score"、"蒸馏评估"、"AI能力评估"、
   "我会被AI取代吗"、"我的AI水平"、"蒸馏我"、"值不值得蒸馏"。
 ---
@@ -10,6 +11,23 @@ description: |
 # DAMC — AI 时代个人价值评估器
 
 > 不是恐吓你会被取代，而是帮你看清自己在 AI 时代的真实坐标。
+
+## 兼容 Agent
+
+DAMC 支持扫描以下 AI Agent 环境（自动检测，无需配置）：
+
+| Agent | 配置目录 | 检测信号 |
+|-------|---------|---------|
+| Claude Code | `~/.claude/` | skills, hooks, MCP, memory |
+| OpenAI Codex | `~/.codex/` | agents, config, sessions |
+| Cursor | `~/.cursor/` | rules, extensions, settings |
+| Windsurf | `~/.codeium/windsurf/` | rules, cascade config |
+| Continue | `~/.continue/` | config, models, rules |
+| Aider | `~/.aider*` | config, model settings |
+| GitHub Copilot | `~/.config/github-copilot/` | settings, instructions |
+| WorkBuddy | `~/.workbuddy/` | config, skills |
+
+如果用户环境中安装了多个 Agent，则合并扫描，取最高分。
 
 ## DAMC 模型
 
@@ -55,9 +73,25 @@ description: |
 
 ### Phase 1: 自动扫描（核心 — 不依赖问卷）
 
-**扫描以下数据源，静默执行，不需要用户参与：**
+**扫描所有检测到的 AI Agent 环境，静默执行，不需要用户参与。**
 
-#### 1.1 Claude Code 环境扫描
+#### 1.0 Agent 环境检测
+
+```bash
+echo "=== DAMC Agent Detection ==="
+[ -d "$HOME/.claude" ] && echo "DETECTED: Claude Code"
+[ -d "$HOME/.codex" ] || command -v codex >/dev/null 2>&1 && echo "DETECTED: Codex"
+[ -d "$HOME/.cursor" ] && echo "DETECTED: Cursor"
+[ -d "$HOME/.codeium/windsurf" ] && echo "DETECTED: Windsurf"
+[ -d "$HOME/.continue" ] && echo "DETECTED: Continue"
+[ -f "$HOME/.aider.conf.yml" ] || [ -d "$HOME/.aider" ] && echo "DETECTED: Aider"
+[ -d "$HOME/.config/github-copilot" ] && echo "DETECTED: GitHub Copilot"
+[ -d "$HOME/.workbuddy" ] && echo "DETECTED: WorkBuddy"
+```
+
+将检测结果记录下来，用于 Phase 3 多 Agent 合并评分。
+
+#### 1.1 Claude Code 环境扫描（如果检测到 `~/.claude/`）
 
 ```
 扫描目标 → 评估信号
@@ -70,7 +104,6 @@ description: |
 
 ~/.claude/skills/
   → skill 总数、自建 vs 安装(检查是否为 symlink)、类别分布
-  → 重点：有无自建 skill（非 symlink 的目录）
 
 ~/.claude/memory/
   → MEMORY.md 是否存在、memory 文件数量、类型分布
@@ -82,23 +115,125 @@ description: |
   → 项目数量、项目级 CLAUDE.md 深度
 ```
 
-#### 1.2 Git 历史扫描（如果当前在 git 仓库中）
+#### 1.2 Codex 环境扫描（如果检测到 `~/.codex/` 或 codex CLI）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.codex/
+  → 目录结构和文件数量
+
+~/.codex/generated_images/
+  → session 数量（代表使用频率）、图片生成总数
+
+项目级 AGENTS.md 或 codex 配置
+  → 是否为 Codex 定制了项目指令
+
+codex --version
+  → 版本号
+```
+
+#### 1.3 Cursor 环境扫描（如果检测到 `~/.cursor/`）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.cursor/rules/
+  → 自定义规则文件数量和大小
+
+项目级 .cursorrules 或 .cursor/rules/
+  → 规则复杂度（行数、是否分文件）
+
+~/.cursor/extensions/
+  → 已安装扩展数量
+```
+
+#### 1.4 Windsurf 环境扫描（如果检测到 `~/.codeium/windsurf/`）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.codeium/windsurf/
+  → 配置深度
+
+项目级 .windsurfrules
+  → 是否自定义了 Windsurf 规则
+
+Cascade 配置
+  → 是否使用了 Cascade agentic 模式
+```
+
+#### 1.5 Continue 环境扫描（如果检测到 `~/.continue/`）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.continue/config.json
+  → 模型配置数量、自定义 provider、context providers
+
+~/.continue/config.ts
+  → 是否有高级 TypeScript 配置
+
+~/.continue/.continuerules
+  → 自定义规则
+```
+
+#### 1.6 Aider 环境扫描（如果检测到）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.aider.conf.yml
+  → 配置复杂度
+
+.aider* 项目级配置
+  → 是否自定义了模型、lint 命令等
+
+aider --version
+  → 版本号
+```
+
+#### 1.7 GitHub Copilot 扫描
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.config/github-copilot/
+  → 配置是否存在
+
+.github/copilot-instructions.md
+  → 项目级指令文件
+```
+
+#### 1.8 WorkBuddy 环境扫描（如果检测到 `~/.workbuddy/`）
+
+```
+扫描目标 → 评估信号
+──────────────────────────────────────────
+~/.workbuddy/
+  → 目录结构、配置文件数量、skill/插件数量
+```
+
+#### 1.9 Git 历史扫描（通用 — 与 Agent 无关）
 
 ```
 git log --oneline -100
-  → AI 协作提交数（含 Co-Authored-By 的提交）
+  → AI 协作提交数（含 Co-Authored-By / Cursor / Copilot / Codex 标记）
   → 总提交频率
 
 git log --all --author 过滤
   → 用户活跃度
 ```
 
-#### 1.3 工作环境信号
+#### 1.10 工作环境信号（通用）
 
 ```
 检查已安装的开发工具
-  → 是否有 node/python/go 等（技术栈广度）
-  → 是否有 docker/k8s（DevOps 能力信号）
+  → node/python/go 等（技术栈广度）
+  → docker/k8s（DevOps 能力信号）
+
+检查 AI Agent 总数
+  → 安装的 Agent 数量本身就是 M 维度信号（多 Agent 加分）
 ```
 
 ### Phase 2: 快速画像（仅问 3 个问题）
@@ -149,12 +284,16 @@ upload_payload = {
     "role": "前端开发",                     # 用户输入
     "mbti": "INTJ",                        # 可选
     "env": {"os": "darwin", "shell": "zsh"}, # 桌面环境
+    "agents_detected": ["Claude Code", "Codex", "Cursor"],
     "scan_summary": {                       # 仅数字摘要
+        "agentsCount": 3,
         "totalSkills": 83,
         "customSkills": 5,
         "mcpServers": 8,
         "memoryFiles": 12,
         "claudeMdLines": 150,
+        "cursorRulesFiles": 3,
+        "codexSessions": 15,
         "aiCommits": 45,
         "totalCommits": 200
     }
@@ -166,6 +305,8 @@ upload_payload = {
 
 ```
 📊 你的 Agent 体检 · 部分结果
+
+  检测到 AI Agent: Claude Code, Codex, Cursor
 
   D ████████░░ 78  M █████████░ 85
   A ██████░░░░ 62  C ██████░░░░ 65
@@ -201,6 +342,7 @@ window.DAMC_DATA = {
   userName: "用户角色",
   date: "2026-04-08",
   mbti: "INTJ", // 或 null
+  agents: ["Claude Code", "Codex", "Cursor"], // 检测到的 Agent 列表
   archetype: { name: "AI架构师", emoji: "🏆", tagline: "一句话定位" },
   overall: 72,
   scores: {
