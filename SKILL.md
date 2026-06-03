@@ -73,8 +73,8 @@ DAMC 支持扫描以下 AI Agent 环境（自动检测，无需配置）：
 ```
 
 **用户回答后路由：**
-- "同意" / "yes" / "ok" → Phase 1 扫描 + Phase 5 上传 + 显示平台 URL
-- "本地模式" / "local" → Phase 1 扫描 + 跳过 Phase 5，仅生成 ~/Desktop/HTML
+- "同意" / "yes" / "ok" → Phase 1-5 扫描评估上传 + Phase 6 Skills 上架 + 显示完整汇总
+- "本地模式" / "local" → Phase 1-4 扫描评估 + 跳过 Phase 5/6，仅生成 ~/Desktop/HTML
 - "取消" / "no" → 直接退出
 
 ### Phase 1: 自动扫描（核心 — 不依赖问卷）
@@ -404,6 +404,101 @@ Response: { "token": "aB7xK9", "url": "https://vibergo.space/r/aB7xK9" }
 - 终端只显示 LITE 摘要
 - 告知用户：「平台暂不可达，已生成本地报告」
 
+### Phase 6: Skills 扫描与上架（仅同意上传时）
+
+**在 Phase 5 完成后执行。扫描用户本地已创建的 Skills，分析其价值，让用户选择是否上架到 DAMC 技能商城。**
+
+#### 6.1 扫描用户 Skills
+
+扫描以下目录中**用户自己创建的** Skills（排除通过 `npx skills add` 安装的第三方 skill）：
+
+```bash
+# Claude Code skills — 用户自建的 slash commands
+ls -la ~/.claude/commands/ 2>/dev/null
+
+# 已安装的 skills（区分自建 vs 第三方）
+# 自建信号：非 symlink、有个人特征、在 commands/ 下
+ls -la ~/.claude/skills/ 2>/dev/null
+
+# 项目级 skills
+find . -maxdepth 2 -name "SKILL.md" -o -name "*.skill.md" 2>/dev/null
+```
+
+**判断"用户自建"的信号：**
+- 文件不是 symlink（symlink 通常是 `npx skills add` 安装的）
+- 文件内容有个人特征（作者名、自定义逻辑）
+- `.claude/commands/` 下的文件默认视为用户自建
+
+#### 6.2 分析 Skill 价值
+
+对每个检测到的自建 Skill，快速分析：
+- **名称和功能**：从文件内容提取 name 和 description
+- **类别**：automation / content / dev-tools / seo / design / data / productivity
+- **商业价值**：基于功能复杂度和通用性判断
+- **建议可见性**：`public`（免费公开）或 `premium`（付费，后续上线）
+
+#### 6.3 展示并让用户选择
+
+```
+🧩 Skills 扫描结果
+
+检测到 {N} 个你创建的 Skills：
+
+  1. ✅ seo-pipeline      — SEO 全流程自动化      建议: Premium
+  2. ✅ deploy-check      — 部署前检查清单        建议: 公开（免费）
+  3. ❌ my-test-script    — 个人测试脚本          建议: 不上架（过于个人化）
+  4. ✅ content-rewriter  — AI 内容改写器         建议: Premium
+
+→ 输入要上架的编号（如 "1,2,4"）
+→ 输入 "全部" 上架所有推荐的（标 ✅ 的）
+→ 输入 "跳过" 不上架任何 Skill
+```
+
+#### 6.4 上传到平台草稿箱
+
+对用户选择的每个 Skill，调用 API 上传到草稿箱：
+
+```
+POST https://vibergo.space/api/skills
+Content-Type: application/json
+
+Body: {
+  "name": "seo-pipeline",
+  "displayName": "SEO Pipeline Pro",
+  "description": "从 Skill 文件中提取的功能描述",
+  "category": "seo",
+  "installCommand": "npx skills add username/seo-pipeline",
+  "iconEmoji": "🔍",
+  "tags": ["SEO", "Automation"],
+  "features": ["feature1", "feature2", "feature3"],
+  "visibility": "premium",
+  "valuation": {
+    "score": 85,
+    "reasoning": "基于 DAMC 分析的估值理由",
+    "marketFit": "市场适配度分析",
+    "uniqueness": "独特性分析"
+  }
+}
+Response: { "id": "uuid", "slug": "seo-pipeline", "url": "/marketplace#seo-pipeline" }
+```
+
+**注意：**
+- 上传需要用户已通过 GitHub 登录平台（未登录则提示先去 damc.space 登录绑定账号）
+- 上传的 Skill 默认进入**草稿箱**（status=draft），需要用户在网页端确认后才会正式上架
+- 如果 API 调用失败，告知用户稍后可以手动在 Dashboard 上架
+
+#### 6.5 上传后提示
+
+```
+✅ 已提交 {N} 个 Skills 到草稿箱
+
+  📋 seo-pipeline       → 草稿箱 (Premium)
+  📋 deploy-check       → 草稿箱 (公开)
+  📋 content-rewriter   → 草稿箱 (Premium)
+
+⚠️  Skills 需要在网页端确认后才会正式上架
+```
+
 **`window.DAMC_DATA` 结构：**
 
 ```javascript
@@ -443,7 +538,7 @@ window.DAMC_DATA = {
 
 ### 在终端显示的摘要
 
-生成报告后，在终端输出简短摘要：
+**所有 Phase 执行完毕后，统一输出最终汇总（覆盖此前的中间输出）：**
 
 ```
 📊 DAMC 评估完成
@@ -456,9 +551,21 @@ window.DAMC_DATA = {
   画像：🏆 AI架构师
   "你有值得蒸馏的深度经验，且善用 AI 放大自己的价值"
 
-  📄 完整报告已保存至：~/Desktop/DAMC-Report-2026-04-08.html
-     用浏览器打开即可查看和分享
+---
+报告输出汇总：
+
+  📄 完整报告：~/Desktop/DAMC-Report-2026-04-08.html
+  🔗 在线报告：https://vibergo.space/r/{token}
+  📋 Skills 草稿：{N} 个已提交到草稿箱
+  🏢 团队码：{code}（已有则显示，没有则不显示）
+
+  🔓 登录 damc.space/dashboard 解锁完整分析：
+     · 22 子维度详情 + 可蒸馏清单 + 护城河识别 + 行动路径
+     · 管理你的 Skills 草稿（确认上架、设置价格）
+     · 查看团队排行和个人历史趋势
 ```
+
+**如果用户选择了"本地模式"，则不显示在线报告、Skills 草稿和 Dashboard 相关的行。**
 
 ### 报告输出路径
 
